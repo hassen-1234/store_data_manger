@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+.navigationBarLink{
+  @apply flex items-center gap-1 hover:opacity-50 active:opacity-40 p-3 w-full text-lg select-none rounded-xl;
+}
+.navigationBarLinkVisit{
+  @apply bg-white/20 !opacity-100 cursor-default;
+}
+
+html {
+  @apply h-full m-0 p-0 overflow-hidden;
+}
