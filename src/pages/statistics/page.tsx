@@ -1,5 +1,8 @@
-import { useMemo } from "react";
+import type Database from "@tauri-apps/plugin-sql";
+import { useMemo, useRef, useEffect,useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import toast from "react-hot-toast";
+import getDb from "../../db";
 
 interface Product {
   productNumber: number;
@@ -15,21 +18,39 @@ const getColorByPrice = (price: number) => {
 
 export default () => {
 
-  //API
-  const products: Product[] = [
-];
+  const db = useRef<Database | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
 
   const totalProducts = products.length;
 
   const totalPrice = useMemo(
     () => products.reduce((sum, p) => sum + p.price, 0),
-    []
+    [products]
   );
 
   const averagePrice = useMemo(
     () => (totalProducts > 0 ? totalPrice / totalProducts : 0),
     [totalProducts, totalPrice]
   );
+
+  useEffect(()=>{
+        const getData = async ()=>{
+            
+            try{
+              db.current = await getDb();
+              const items : Product[] = await db.current.select("SELECT * FROM product ORDER BY price DESC");
+              setProducts(items);
+            } catch{
+                  toast.dismiss();
+                  toast.custom(()=> {
+                  return <div className="flex justify-between p-2 w-52 bg-white rounded border shadow-xl dark:bg-gray-800 dark:text-white">
+                      <span className="text-red-600">❌ خطأ</span>
+                      <button onClick={getData} className="font-bold cursor-pointer hover:opacity-60 active:opacity-50">إعادة المحاولة</button>
+                  </div>},{duration : Infinity});
+            }
+        }
+        getData();
+    },[]);
 
   return (
     <div className="flex flex-col items-center justify-center gap-6 p-6 h-screen font-[Cairo]">

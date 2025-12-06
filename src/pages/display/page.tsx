@@ -1,10 +1,10 @@
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import Database from "@tauri-apps/plugin-sql";
-import { FaCopy, FaTrash, FaArrowDown, FaArrowUp, FaSort, FaCheck } from "react-icons/fa";
+import type Database from "@tauri-apps/plugin-sql";
+import { FaCopy, FaTrash, FaArrowDown, FaArrowUp, FaCheck } from "react-icons/fa";
 import { BiMoney } from "react-icons/bi";
 import { toast } from "react-hot-toast";
-import  { useState,useEffect,useRef } from "react";
-import getDb from "../../db"
+import  { useState,useEffect,useRef,Dispatch,SetStateAction } from "react";
+import getDb from "../../db";
 
 interface Product {
     id : number;
@@ -33,20 +33,33 @@ const AppearanceElement = ({ name,price,itemNumbre,deleteFunction }:{ name:strin
     </div>
 }
 
-const TrieComponent = ({ sortOption,setSortOption } : {sortOption : number,setSortOption : React.Dispatch<React.SetStateAction<number>> })=>{
+const TrieComponent = ({ sortOption,setSortOption,products,setProducts,setProductsLoading } : {sortOption : number,setSortOption : Dispatch<SetStateAction<number>>,products : Product[],setProducts : Dispatch<SetStateAction<Product[]>>,setProductsLoading : Dispatch<SetStateAction<boolean>> })=>{
 
-    const [openTrie,setOpenTrie] = useState(true);
+    const [openTrie,setOpenTrie] = useState(false);
 
-    const trieHandler = ()=>{
-        
+    const trieHandler = (optionNumber : number)=>{
+
+        if (optionNumber === sortOption) return;
+        setProductsLoading(true);
+
+        const productsSort = products.sort((p1,p2)=>{
+            if (optionNumber == 0 ) return p2.price - p1.price
+            return p1.price - p2.price
+        })
+
+        setProducts(productsSort);
+        setSortOption(optionNumber);
+        setProductsLoading(false);
+        setOpenTrie(!openTrie)
     }
     
-    return <div onClick={()=>{setOpenTrie(!openTrie)}} className="relative">
-    <FaSort onClick={trieHandler} title="ترتيب" className="ml-1 text-xl rounded w-8 h-8 p-1.5 hover:opacity-70 active:opacity-60 cursor-pointer dark:text-white"/>
-    {openTrie && <div className="flex flex-col gap-4 absolute z-10 w-48 bg-white/50 border top-6 left-1 p-3 rounded shadow-xl backdrop-blur-xl">
-        <span className="flex items-center gap-2"><FaArrowDown/>حسب السعر الأعلى </span>
-        <span className="flex items-center gap-2"><FaArrowUp/>حسب السعر الأدنى</span>
-    </div>}
+    return <div className="relative">
+    <button title="ترتيب" onClick={()=>{setOpenTrie(!openTrie)}} className="ml-2 mt-2 cursor-pointer hover:opacity-70 active:opacity-50">{sortOption === 0 ? <FaArrowDown className="text-2xl text-indigo-800"/> : <FaArrowUp className="text-2xl text-indigo-800"/>}</button>
+    {openTrie && <ul className="flex flex-col gap-3 absolute z-10 w-52 bg-white/50 border top-8 left-1 p-3 rounded shadow-xl backdrop-blur-xl">
+        <li onClick={()=>{trieHandler(0)}} className={`flex items-center gap-3 cursor-pointer ${sortOption === 1 ? "hover:opacity-60 active:opacity-50": ""}`}><FaArrowDown className="text-indigo-800"/>حسب السعر الأعلى {sortOption === 0 ? <FaCheck className="text-center text-green-500 mt-1"/> : ""}</li>
+        <hr className="text-indigo-600"/>
+        <li onClick={()=>{trieHandler(1)}} className={`flex items-center gap-3 cursor-pointer ${sortOption === 0 ? "hover:opacity-60 active:opacity-50": ""}`}><FaArrowUp className="text-indigo-800"/>حسب السعر الأدنى{sortOption === 1 ? <FaCheck className="text-center text-green-500 mt-1"/> : ""}</li>
+    </ul>}
     </div>
 }
 
@@ -67,7 +80,7 @@ export default ()=>{
             db.current = await getDb();
             const items : Product[] = await db.current.select("SELECT * FROM product ORDER BY price DESC");
             setProducts(items);
-            } catch(e){
+            } catch{
                 toast.dismiss();
                 toast.custom(()=> {
                 return <div className="flex justify-between p-2 w-52 bg-white rounded border shadow-xl dark:bg-gray-800 dark:text-white">
@@ -79,7 +92,7 @@ export default ()=>{
             }
         }
         getData();
-    },[])
+    },[]);
     
 
     const searchHandler = async ()=>{
@@ -87,20 +100,33 @@ export default ()=>{
         if (db.current) {
             try{
             const sort = sortOption === 0 ? "DESC" : "ASC";
-            const items : Product[] = await db.current.select("SELECT * FROM product WHERE name Like ? ORDER BY price ?",[`${productName}%`,sort]);
+            const items : Product[] = await db.current.select(`SELECT * FROM product ${productName !== "" ? "WHERE name Like ? " : ""}ORDER BY price ${sort}`,[`${productName}%`]);
+            console.log(items);
             setProducts(items);
-            console.log(1);
             }catch{
-                toast.error("خطأ")
+                toast.error("خطأ");
             }
-        }else{
-            console.log(0);
         }
         setProductsLoading(false);
     }
 
-    const deleteHandler = ( itemNumber:number )=>{
-        // API
+    const deleteHandler = async ( itemNumber:number )=>{
+        try{
+            const result: any = await db.current?.execute("DELETE FROM product WHERE number = ?",[itemNumber]);
+
+            if (result.rowsAffected > 0) {
+
+                // Product delete from array products
+                const items = products.filter((product: Product) => product.number != itemNumber);
+                setProducts(items);
+
+                toast.success("تم الحذف");
+            }else{
+                toast.error("خطأ");
+            }
+        }catch{
+            toast.error("خطأ");
+        }
     }
     
 
@@ -108,7 +134,7 @@ export default ()=>{
         <div className="flex mb-3 gap-3 items-center">
             <input type="search" placeholder="اسم السلعة" value={productName} onChange={(e)=>{setProductName(e.target.value)}} onKeyDown={async (e)=>{if (e.key == "Enter") await searchHandler()}} className="border rounded p-2 flex-1 max-w-xl dark:text-white dark:border-white dark:m-1"/>
             <button onClick={searchHandler} className="bg-indigo-800 text-white border p-2 rounded font-bold hover:opacity-90 active:opacity-80 cursor-pointer">بحث</button>
-            <TrieComponent sortOption={sortOption} setSortOption={setSortOption}/>
+            <TrieComponent sortOption={sortOption} setSortOption={setSortOption} products={products} setProducts={setProducts} setProductsLoading={setProductsLoading}/>
         </div>
 
         {/* Appearance part */}
@@ -117,7 +143,8 @@ export default ()=>{
             ? <div className="w-10 h-10 border-4 rounded-full animate-spin border-gray-300 border-t-indigo-600 self-center mt-60"></div> 
             : products.length > 0
             ? products.map((product,index)=><AppearanceElement key={index} name={product.name} price={product.price} itemNumbre={product.number} deleteFunction={deleteHandler}/>)
-            : <span className="flex justify-center items-center h-full font-semibold text-xl drop-shadow-xl drop-shadow-indigo-800 dark:text-white">فارغ</span>}
+            : <span className="flex justify-center items-center h-full font-semibold text-xl drop-shadow-xl drop-shadow-indigo-800 dark:text-white">فارغ</span>
+            }
         </div>
     </div>
 }
