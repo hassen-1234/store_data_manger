@@ -1,6 +1,7 @@
+import type Database from "@tauri-apps/plugin-sql";
 import { BrowserRouter as Router,Routes,Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { useEffect } from "react";
+import { useEffect,useRef } from "react";
 import "./App.css";
 import getDb from "./db";
 import NavBar from "./components/navBar";
@@ -10,12 +11,22 @@ import EditPart from "./pages/edit/page";
 import StatisticsPart from "./pages/statistics/page";
 
 function App() {
+  
+  const db = useRef<Database | null>(null);
 
   useEffect(() => {
+
     const dbLoad = async ()=>{
-      await getDb();
+      db.current = await getDb();
     }
-    dbLoad()
+    
+    const cleanUp = () => {
+      db.current?.close()
+    } 
+
+    dbLoad();
+
+    return cleanUp
   }, []);
 
   return <Router>
