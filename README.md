@@ -1,7 +1,27 @@
-# Tauri + React + Typescript
+# Gestion des produits
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Une belle application de gestion des produits d'un magasin
 
-## Recommended IDE Setup
+![](public/1.png)
+![](public/2.png)
+![](public/3.png)
+![](public/4.png)
+![](public/5.png)
+![](public/6.png)
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Thechnologies principales de l'application
+
+- Tauri
+- React
+- typescript
+
+## ✨ Fonctionnalités
+
+* **CRUD** (Création, Lecture, Mise à jour, Suppression) de produits.
+* **Recherche et Triage**.
+
+
+## Utilisation
+```bash
+npm install
+npm run tauri dev
